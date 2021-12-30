@@ -922,7 +922,7 @@ var P;
                     this.bubblePointer.style.position = 'absolute';
                     this.bubblePointer.style.height = (21 / 14) + 'em';
                     this.bubblePointer.style.width = (44 / 14) + 'em';
-                    this.bubblePointer.style.background = 'url("icons.svg")';
+                    this.bubblePointer.style.background = `url("${P.io.config.localPath}icons.svg")`;
                     this.bubblePointer.style.backgroundSize = (384 / 14) + 'em ' + (64 / 14) + 'em';
                     this.bubblePointer.style.backgroundPositionY = (-4 / 14) + 'em';
                     this.stage.ui.appendChild(this.bubbleContainer);
@@ -1111,7 +1111,7 @@ var P;
                 this.promptButton.style.position = 'absolute';
                 this.promptButton.style.right = '.4em';
                 this.promptButton.style.bottom = '.4em';
-                this.promptButton.style.background = 'url(icons.svg) -22.8em -0.4em';
+                this.promptButton.style.background = `url("${P.io.config.localPath}icons.svg") -22.8em -0.4em`;
                 this.promptButton.style.backgroundSize = '38.4em 6.4em';
                 this.addEventListeners();
             }
@@ -2068,7 +2068,8 @@ var P;
             'player.controls.flag.title.enabled': 'Turbo mode is enabled. Shift+click to disable turbo mode.',
             'player.controls.flag.title.disabled': 'Turbo mode is disabled. Shift+click to enable turbo mode.',
             'player.errorhandler.error': 'An internal error occurred. <a $attrs>Click here</a> to file a bug report.',
-            'player.errorhandler.error.doesnotexist': 'There is no project with ID $id (Project was probably deleted, never existed, or you made a typo.)',
+            'player.errorhandler.error.doesnotexist': 'There is no project with ID $id. It was probably deleted, never existed, or you made a typo.',
+            'player.errorhandler.error.doesnotexistlegacy': 'The project with ID $id can not be used with legacy mode enabled. Turn off legacy mode to use this project.',
         });
         addTranslations('es', {
             'player.controls.turboIndicator': 'Modo Turbo',
@@ -3759,7 +3760,13 @@ var P;
             }
             handleDoesNotExistError(error) {
                 const el = document.createElement('div');
-                el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
+                const LEGACY_HOST = 'https://projects.scratch.mit.edu/internalapi/project/$id/get/';
+                if (this.player.getOptions().projectHost === LEGACY_HOST) {
+                    el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexistlegacy').replace('$id', error.id);
+                }
+                else {
+                    el.textContent = P.i18n.translate('player.errorhandler.error.doesnotexist').replace('$id', error.id);
+                }
                 return el;
             }
             onerror(error) {
@@ -6867,6 +6874,9 @@ var P;
                 }
                 target.name = data.name;
                 target.currentCostumeIndex = data.currentCostume;
+                if ('volume' in data) {
+                    target.volume = data.volume / 100;
+                }
                 target.sb3data = data;
                 if (target.isStage) {
                 }
@@ -7243,6 +7253,12 @@ var P;
             compiler_1.inputLibrary = Object.create(null);
             compiler_1.hatLibrary = Object.create(null);
             compiler_1.watcherLibrary = Object.create(null);
+            const safeNumberToString = (n) => {
+                if (Object.is(n, -0)) {
+                    return '-0';
+                }
+                return n.toString();
+            };
             class Compiler {
                 constructor(target) {
                     this.labelCount = 0;
@@ -7392,9 +7408,7 @@ var P;
                             if (isNaN(number) || desiredType === 'string') {
                                 return this.sanitizedInput('' + native[1]);
                             }
-                            else {
-                                return numberInput(number.toString());
-                            }
+                            return numberInput(safeNumberToString(number));
                         }
                         case 10: {
                             const value = native[1];

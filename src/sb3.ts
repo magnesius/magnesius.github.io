@@ -40,6 +40,7 @@ namespace P.sb3 {
     variables: ObjectMap<SB3Variable>;
     blocks: ObjectMap<SB3Block>;
     broadcasts: ObjectMap<string>;
+    volume: number;
   }
 
   interface SB3Costume {
@@ -882,6 +883,9 @@ namespace P.sb3 {
 
       target.name = data.name;
       target.currentCostumeIndex = data.currentCostume;
+      if ('volume' in data) {
+        target.volume = data.volume / 100;
+      }
       target.sb3data = data;
 
       if (target.isStage) {
@@ -900,7 +904,7 @@ namespace P.sb3 {
       const costumesPromise = Promise.all<P.core.Costume>(data.costumes.map((c: any, i: any) => this.loadCostume(c, i)));
       const soundsPromise = Promise.all<P.core.Sound | null>(data.sounds.map((c) => this.loadSound(c)));
 
-      return Promise.all<P.core.Costume[], Array<P.core.Sound | null>>([costumesPromise, soundsPromise])
+      return Promise.all([costumesPromise, soundsPromise])
         .then((result) => {
           const costumes = result[0];
           const sounds = result[1];
@@ -1498,6 +1502,14 @@ namespace P.sb3.compiler {
   export const hatLibrary: ObjectMap<HatCompiler> = Object.create(null);
   export const watcherLibrary: ObjectMap<WatchedValue> = Object.create(null);
 
+  const safeNumberToString = (n: number): string => {
+    // -0 toString() returns "0"
+    if (Object.is(n, -0)) {
+      return '-0';
+    }
+    return n.toString();
+  };
+
   /**
    * The new compiler for Scratch 3 projects.
    */
@@ -1754,11 +1766,8 @@ namespace P.sb3.compiler {
           const number = +native[1];
           if (isNaN(number) || desiredType === 'string') {
             return this.sanitizedInput('' + native[1]);
-          } else {
-            // Using number.toString() instead of native[1] fixes syntax errors
-            // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Deprecated_octal
-            return numberInput(number.toString());
           }
+          return numberInput(safeNumberToString(number));
         }
 
         case NativeTypes.TEXT: {
